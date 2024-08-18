@@ -25,6 +25,24 @@ func HandleCommand(command string) string {
 			return "(nil)"
 		}
 		return value
+	case "DEL":
+		if len(parts) != 2 {
+			return "ERROR: Invalid DEL command"
+		}
+		storage.Del(parts[1])
+		return "OK"
+	case "INCR":
+		if len(parts) != 2 {
+			return "ERROR: Invalid INCR command"
+		}
+		value := storage.Incr(parts[1])
+		return value
+	case "DEC":
+		if len(parts) != 2 {
+			return "ERROR: Invalid INCR command"
+		}
+		value := storage.Dec(parts[1])
+		return value
 	default:
 		return "ERROR: Unknown command"
 	}
