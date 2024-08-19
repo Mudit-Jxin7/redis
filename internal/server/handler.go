@@ -48,8 +48,8 @@ func HandleCommand(command string) string {
 		if len(parts) < 3 {
 			return "ERROR: Invalid LPUSH command"
 		}
-		value := storage.LPush(parts[1], parts[2:]...)
-		return value
+		storage.LPush(parts[1], parts[2:]...)
+		return "OK"
 	case "RPUSH":
 		if len(parts) < 3 {
 			return "ERROR: Invalid RPUSH command"
@@ -125,6 +125,33 @@ func HandleCommand(command string) string {
 			return "ERROR: HDEL requires at least 2 arguments"
 		}
 		count := storage.HDel(parts[1], parts[2:]...)
+		return strconv.Itoa(count)
+	case "SADD":
+		if len(parts) < 3 {
+			return "ERROR: SADD requires at least 2 arguments"
+		}
+		count := storage.SAdd(parts[1], parts[2:]...)
+		return strconv.Itoa(count)
+	case "SMEMBERS":
+		if len(parts) != 2 {
+			return "ERROR: SMEMBERS requires 1 argument"
+		}
+		members := storage.SMembers(parts[1])
+		return strings.Join(members, " ")
+	case "SISMEMBER":
+		if len(parts) != 3 {
+			return "ERROR: SISMEMBER requires 2 arguments"
+		}
+		isMember := storage.SIsMember(parts[1], parts[2])
+		if isMember {
+			return "1"
+		}
+		return "0"
+	case "SREM":
+		if len(parts) < 3 {
+			return "ERROR: SREM requires at least 2 arguments"
+		}
+		count := storage.SRem(parts[1], parts[2:]...)
 		return strconv.Itoa(count)
 	default:
 		return "ERROR: Unknown command"

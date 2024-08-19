@@ -58,11 +58,13 @@ type DB struct {
 	sync.RWMutex
 	data map[string][]string
 	hash map[string]map[string]string
+	set  map[string]map[string]struct{}
 }
 
 var db = &DB{
 	data: make(map[string][]string),
 	hash: make(map[string]map[string]string),
+	set:  make(map[string]map[string]struct{}),
 }
 
 func LPush(key string, values ...string) string {
@@ -229,4 +231,68 @@ func HDel(key string, fields ...string) int {
 		}
 	}
 	return count
+}
+
+// sets
+
+func SAdd(key string, members ...string) int {
+	db.Lock()
+	defer db.Unlock()
+
+	if _, exists := db.set[key]; !exists {
+		db.set[key] = make(map[string]struct{})
+	}
+
+	added := 0
+	for _, member := range members {
+		if _, exists := db.set[key][member]; !exists {
+			db.set[key][member] = struct{}{}
+			added++
+		}
+	}
+	return added
+}
+
+func SMembers(key string) []string {
+	db.RLock()
+	defer db.RUnlock()
+
+	if set, exists := db.set[key]; exists {
+		members := make([]string, 0, len(set))
+		for member := range set {
+			members = append(members, member)
+		}
+		return members
+	}
+	return []string{}
+}
+
+func SIsMember(key, member string) bool {
+	db.RLock()
+	defer db.RUnlock()
+
+	if set, exists := db.set[key]; exists {
+		_, exists := set[member]
+		return exists
+	}
+	return false
+}
+
+func SRem(key string, members ...string) int {
+	db.Lock()
+	defer db.Unlock()
+
+	removed := 0
+	if set, exists := db.set[key]; exists {
+		for _, member := range members {
+			if _, exists := set[member]; exists {
+				delete(set, member)
+				removed++
+			}
+		}
+		if len(set) == 0 {
+			delete(db.set, key)
+		}
+	}
+	return removed
 }
