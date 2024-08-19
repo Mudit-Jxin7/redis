@@ -57,10 +57,12 @@ func Decr(key string) string {
 type DB struct {
 	sync.RWMutex
 	data map[string][]string
+	hash map[string]map[string]string
 }
 
 var db = &DB{
 	data: make(map[string][]string),
+	hash: make(map[string]map[string]string),
 }
 
 func LPush(key string, values ...string) string {
@@ -138,4 +140,93 @@ func LLen(key string) string {
 		return fmt.Sprintf("%d", len(list))
 	}
 	return "0"
+}
+
+// hash
+
+func HSet(key, field, value string) string {
+	db.Lock()
+	defer db.Unlock()
+
+	if _, exists := db.hash[key]; !exists {
+		db.hash[key] = make(map[string]string)
+	}
+	db.hash[key][field] = value
+	return "OK"
+}
+
+func HGet(key, field string) string {
+	db.RLock()
+	defer db.RUnlock()
+
+	if fields, exists := db.hash[key]; exists {
+		if val, ok := fields[field]; ok {
+			return val
+		}
+	}
+	return "(nil)"
+}
+
+func HMSet(key string, fieldValues map[string]string) string {
+	db.Lock()
+	defer db.Unlock()
+
+	if _, exists := db.hash[key]; !exists {
+		db.hash[key] = make(map[string]string)
+	}
+	for field, value := range fieldValues {
+		db.hash[key][field] = value
+	}
+	return "OK"
+}
+
+func HMGet(key string, fields ...string) []string {
+	db.RLock()
+	defer db.RUnlock()
+
+	var result []string
+	if fieldMap, exists := db.hash[key]; exists {
+		for _, field := range fields {
+			if val, ok := fieldMap[field]; ok {
+				result = append(result, val)
+			} else {
+				result = append(result, "(nil)")
+			}
+		}
+	} else {
+		for range fields {
+			result = append(result, "(nil)")
+		}
+	}
+	return result
+}
+
+func HGetAll(key string) map[string]string {
+	db.RLock()
+	defer db.RUnlock()
+
+	if fields, exists := db.hash[key]; exists {
+		return fields
+	}
+	return map[string]string{}
+}
+
+func HDel(key string, fields ...string) int {
+	db.Lock()
+	defer db.Unlock()
+
+	count := 0
+	if fieldMap, exists := db.hash[key]; exists {
+		for _, field := range fields {
+			if _, ok := fieldMap[field]; ok {
+				delete(fieldMap, field)
+				count++
+			}
+		}
+
+		if len(fieldMap) == 0 {
+			delete(db.hash, key)
+		}
+	}
+	return count
 }
