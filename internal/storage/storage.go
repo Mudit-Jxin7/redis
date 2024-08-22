@@ -296,3 +296,67 @@ func SRem(key string, members ...string) int {
 	}
 	return removed
 }
+
+// sorted sets
+
+type SortedSet struct {
+	members map[string]float64
+	order   []string
+}
+
+var sortedSets = make(map[string]*SortedSet)
+
+func ZAdd(key string, score float64, member string) string {
+	if _, exists := sortedSets[key]; !exists {
+		sortedSets[key] = &SortedSet{
+			members: make(map[string]float64),
+			order:   []string{},
+		}
+	}
+
+	ss := sortedSets[key]
+	ss.members[member] = score
+
+	index := 0
+	for i, m := range ss.order {
+		if ss.members[m] > score {
+			index = i
+			break
+		}
+	}
+	ss.order = append(ss.order[:index], append([]string{member}, ss.order[index:]...)...)
+	return "OK"
+}
+
+func ZRange(key string, start, stop int) []string {
+	if ss, exists := sortedSets[key]; exists {
+		if start < 0 {
+			start = 0
+		}
+		if stop >= len(ss.order) {
+			stop = len(ss.order) - 1
+		}
+		return ss.order[start : stop+1]
+	}
+	return []string{}
+}
+
+func ZRem(key string, members ...string) int {
+	if ss, exists := sortedSets[key]; exists {
+		removedCount := 0
+		for _, member := range members {
+			if _, exists := ss.members[member]; exists {
+				delete(ss.members, member)
+				for i, m := range ss.order {
+					if m == member {
+						ss.order = append(ss.order[:i], ss.order[i+1:]...)
+						break
+					}
+				}
+				removedCount++
+			}
+		}
+		return removedCount
+	}
+	return 0
+}

@@ -153,6 +153,35 @@ func HandleCommand(command string) string {
 		}
 		count := storage.SRem(parts[1], parts[2:]...)
 		return strconv.Itoa(count)
+	case "ZADD":
+		if len(parts) < 4 || len(parts)%2 != 0 {
+			return "ERROR: Invalid ZADD command"
+		}
+		key := parts[1]
+		for i := 2; i < len(parts); i += 2 {
+			score, err := strconv.ParseFloat(parts[i], 64)
+			if err != nil {
+				return "ERROR: Invalid score"
+			}
+			storage.ZAdd(key, score, parts[i+1])
+		}
+		return "OK"
+	case "ZRANGE":
+		if len(parts) != 4 {
+			return "ERROR: Invalid ZRANGE command"
+		}
+		key := parts[1]
+		start, _ := strconv.Atoi(parts[2])
+		stop, _ := strconv.Atoi(parts[3])
+		result := storage.ZRange(key, start, stop)
+		return strings.Join(result, " ")
+	case "ZREM":
+		if len(parts) < 3 {
+			return "ERROR: Invalid ZREM command"
+		}
+		key := parts[1]
+		removedCount := storage.ZRem(key, parts[2:]...)
+		return strconv.Itoa(removedCount)
 	default:
 		return "ERROR: Unknown command"
 	}
